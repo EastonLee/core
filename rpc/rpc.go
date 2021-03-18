@@ -869,7 +869,15 @@ func (v *Vibranium) RunAndWait(stream pb.CoreRPC_RunAndWaitServer) error {
 			r, w := io.Pipe()
 			go func() {
 				defer w.Close()
+				messageCount := 0
 				for m := range ch {
+					// only send first message to stream, to tell client the running container ID
+					if messageCount == 0 {
+						if err = stream.Send(toRPCAttachWorkloadMessage(m)); err != nil {
+							v.logUnsentMessages("RunAndWait", err, m)
+						}
+					}
+					messageCount++
 					if _, err := w.Write(m.Data); err != nil {
 						log.Errorf("[Async RunAndWait] iterate and forward AttachWorkloadMessage error: %v", err)
 					}
